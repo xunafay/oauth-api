@@ -1,0 +1,28 @@
+import { Express, NextFunction, Request, Response } from 'express';
+import Cors from 'cors';
+import Bodyparser from 'body-parser';
+import Compression from 'compression';
+import { Metrics } from './services/metrics';
+import { HealthController } from './controllers/health';
+
+export function applyRoutes(express: Express): Express {
+  express.disable('etag');
+  express.set('trust proxy', true);
+
+  express.use(Metrics.startMiddleware);
+  express.use(Cors());
+  express.use(Bodyparser.json());
+  express.use(Compression());
+
+  express.use('/health', HealthController.router());
+
+  express.use((req: Request, res: Response, next: NextFunction) => {
+    if (!res.writableFinished) {
+      res.sendStatus(404);
+    }
+    next();
+  });
+
+  express.use(Metrics.endMiddleware);
+  return express;
+}
